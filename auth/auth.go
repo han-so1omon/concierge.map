@@ -9,7 +9,7 @@ import (
 	"reflect"
 )
 
-var store *sessions.CookieStore
+var Store *sessions.CookieStore
 
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
@@ -31,12 +31,12 @@ func InitSession(sessionKeys *Keys) {
 		util.Logger.Fatal("Session keys are unset")
 	}
 
-	store = sessions.NewCookieStore(
+	Store = sessions.NewCookieStore(
 		sessionKeys.AuthKey,
 		sessionKeys.EncryptionKey,
 	)
 
-	store.Options = &sessions.Options{
+	Store.Options = &sessions.Options{
 		Path:     "/",
 		MaxAge:   24 * 60 * 60,
 		HttpOnly: true,

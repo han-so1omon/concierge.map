@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/gorilla/sessions"
+	"github.com/han-so1omon/concierge.map/auth"
+	"github.com/han-so1omon/concierge.map/data"
+	"github.com/han-so1omon/concierge.map/data/db"
+	"github.com/han-so1omon/concierge.map/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
@@ -12,9 +16,9 @@ import (
 )
 
 func SignInUser(response http.ResponseWriter, request *http.Request) {
-	var loginRequest LoginParams
-	var userRequested UserDetails
-	var errorResponse = ErrorResponse{
+	var loginRequest data.LoginParams
+	var userRequested data.UserDetails
+	var errorResponse = data.ErrorResponse{
 		Code: http.StatusInternalServerError, Message: "It's not you it's me.",
 	}
 
@@ -38,7 +42,7 @@ func SignInUser(response http.ResponseWriter, request *http.Request) {
 		return
 	} else {
 
-		collection := client.Database("concierge").Collection("users")
+		collection := db.Client.Database("concierge").Collection("users")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		var err = collection.FindOne(ctx, bson.M{
@@ -53,7 +57,7 @@ func SignInUser(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		if !CheckPasswordHash(loginRequest.Password, userRequested.Password) {
+		if !auth.CheckPasswordHash(loginRequest.Password, userRequested.Password) {
 			errorResponse.Message = "Incorrect password"
 			returnErrorResponse(response, request, errorResponse)
 			return
@@ -65,13 +69,13 @@ func SignInUser(response http.ResponseWriter, request *http.Request) {
 		}
 		// Create new user session
 		//TODO should session name be unique (e.g. prepend with email name)
-		session, sessionErr := store.Get(request, "session")
+		session, sessionErr := auth.Store.Get(request, "session")
 		if sessionErr != nil {
 			returnErrorResponse(response, request, errorResponse)
 			return
 		}
 
-		user := &UserSessionInfo{
+		user := &data.UserSessionInfo{
 			Email:         userRequested.Email,
 			Authenticated: userRequested.Authenticated,
 		}
@@ -79,15 +83,15 @@ func SignInUser(response http.ResponseWriter, request *http.Request) {
 
 		err = session.Save(request, response)
 		if err != nil {
-			Logger.Info(err)
+			util.Logger.Info(err)
 			returnErrorResponse(response, request, errorResponse)
 			return
 		}
 
-		var successResponse = SuccessResponse{
+		var successResponse = data.SuccessResponse{
 			Code:    http.StatusOK,
 			Message: "You are logged in",
-			Response: SuccessfulLoginResponse{
+			Response: data.SuccessfulLoginResponse{
 				Email:    loginRequest.Email,
 				Username: userRequested.Username,
 			},
@@ -105,9 +109,9 @@ func SignInUser(response http.ResponseWriter, request *http.Request) {
 }
 
 func SignUpUser(response http.ResponseWriter, request *http.Request) {
-	var existingUser UserDetails
-	var registrationRequest RegistrationParams
-	var errorResponse = ErrorResponse{
+	var existingUser data.UserDetails
+	var registrationRequest data.RegistrationParams
+	var errorResponse = data.ErrorResponse{
 		Code: http.StatusInternalServerError, Message: "It's not you it's me.",
 	}
 
@@ -133,11 +137,11 @@ func SignUpUser(response http.ResponseWriter, request *http.Request) {
 		returnErrorResponse(response, request, errorResponse)
 		return
 	} else {
-		var registrationResponse = SuccessfulSignupResponse{
+		var registrationResponse = data.SuccessfulSignupResponse{
 			Email: registrationRequest.Email,
 		}
 
-		collection := client.Database("concierge").Collection("users")
+		collection := db.Client.Database("concierge").Collection("users")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -156,7 +160,7 @@ func SignUpUser(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		hashedPassword, _ := HashPassword(registrationRequest.Password)
+		hashedPassword, _ := auth.HashPassword(registrationRequest.Password)
 		_, databaseErr := collection.InsertOne(ctx, bson.M{
 			"email":         registrationRequest.Email,
 			"password":      hashedPassword,
@@ -169,7 +173,7 @@ func SignUpUser(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		var successResponse = SuccessResponse{
+		var successResponse = data.SuccessResponse{
 			Code:     http.StatusOK,
 			Message:  "You are registered, login to continue",
 			Response: registrationResponse,
@@ -188,8 +192,8 @@ func SignUpUser(response http.ResponseWriter, request *http.Request) {
 }
 
 func SignOutUser(response http.ResponseWriter, request *http.Request) {
-	var signoutRequest SignoutParams
-	var errorResponse = ErrorResponse{
+	var signoutRequest data.SignoutParams
+	var errorResponse = data.ErrorResponse{
 		Code: http.StatusInternalServerError, Message: "It's not you it's me.",
 	}
 
@@ -202,13 +206,13 @@ func SignOutUser(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	session, err := store.Get(request, "session")
+	session, err := auth.Store.Get(request, "session")
 	if err != nil {
 		returnErrorResponse(response, request, errorResponse)
 		return
 	}
 
-	session.Values["user"] = UserSessionInfo{}
+	session.Values["user"] = data.UserSessionInfo{}
 	session.Options.MaxAge = -1
 
 	err = session.Save(request, response)
@@ -217,11 +221,11 @@ func SignOutUser(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	var signoutResponse = SuccessfulSignoutResponse{
+	var signoutResponse = data.SuccessfulSignoutResponse{
 		Email: signoutRequest.Email,
 	}
 
-	var successResponse = SuccessResponse{
+	var successResponse = data.SuccessResponse{
 		Code:     http.StatusOK,
 		Message:  "You have signed out",
 		Response: signoutResponse,
@@ -238,11 +242,11 @@ func SignOutUser(response http.ResponseWriter, request *http.Request) {
 }
 
 func GetUserInfo(response http.ResponseWriter, request *http.Request) {
-	var requestedUser UserDetails
-	var errorResponse = ErrorResponse{
+	var requestedUser data.UserDetails
+	var errorResponse = data.ErrorResponse{
 		Code: http.StatusInternalServerError, Message: "It's not you it's me.",
 	}
-	session, err := store.Get(request, "session")
+	session, err := auth.Store.Get(request, "session")
 	if err != nil {
 		returnErrorResponse(response, request, errorResponse)
 		return
@@ -255,9 +259,9 @@ func GetUserInfo(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	Logger.Infof("Requested user email: %s", user.Email)
+	util.Logger.Infof("Requested user email: %s", user.Email)
 
-	collection := client.Database("concierge").Collection("users")
+	collection := db.Client.Database("concierge").Collection("users")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	err = collection.FindOne(ctx, bson.M{
@@ -271,11 +275,11 @@ func GetUserInfo(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	var userResponse = SuccessfulUserResponse{
+	var userResponse = data.SuccessfulUserResponse{
 		Email:    requestedUser.Email,
 		Username: requestedUser.Username,
 	}
-	var successResponse = SuccessResponse{
+	var successResponse = data.SuccessResponse{
 		Code:     http.StatusOK,
 		Message:  "Check it out!",
 		Response: userResponse,
@@ -296,8 +300,8 @@ func isURL(str string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-func returnErrorResponse(response http.ResponseWriter, request *http.Request, errorMessage ErrorResponse) {
-	httpResponse := &ErrorResponse{Code: errorMessage.Code, Message: errorMessage.Message}
+func returnErrorResponse(response http.ResponseWriter, request *http.Request, errorMessage data.ErrorResponse) {
+	httpResponse := &data.ErrorResponse{Code: errorMessage.Code, Message: errorMessage.Message}
 	jsonResponse, err := json.Marshal(httpResponse)
 	if err != nil {
 		panic(err)
@@ -307,12 +311,12 @@ func returnErrorResponse(response http.ResponseWriter, request *http.Request, er
 	response.Write(jsonResponse)
 }
 
-func getUser(s *sessions.Session) UserSessionInfo {
+func getUser(s *sessions.Session) data.UserSessionInfo {
 	val := s.Values["user"]
-	var user = UserSessionInfo{}
-	user, ok := val.(UserSessionInfo)
+	var user = data.UserSessionInfo{}
+	user, ok := val.(data.UserSessionInfo)
 	if !ok {
-		return UserSessionInfo{Authenticated: false}
+		return data.UserSessionInfo{Authenticated: false}
 	}
 	return user
 }

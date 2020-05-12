@@ -6,7 +6,7 @@ import (
 
 	"github.com/han-so1omon/concierge.map/auth"
 	"github.com/han-so1omon/concierge.map/data/db"
-	"github.com/han-so1omon/concierge.map/server"
+	//"github.com/han-so1omon/concierge.map/server"
 	"github.com/han-so1omon/concierge.map/server/graph"
 	"github.com/han-so1omon/concierge.map/server/graph/generated"
 	"github.com/han-so1omon/concierge.map/util"
@@ -31,7 +31,7 @@ func main() {
 		util.Logger.Fatal("Error loading .env file")
 	}
 
-	var sessionKeys Keys
+	var sessionKeys auth.Keys
 	sessionKeysFile := os.Getenv("SESSION_KEYS_FILE")
 	f, fileErr := os.OpenFile(sessionKeysFile, os.O_RDONLY, 0664)
 	defer f.Close()
