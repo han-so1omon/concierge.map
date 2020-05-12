@@ -1,0 +1,37 @@
+type User {
+  id: ID!
+  username: String!
+  email: String!
+  password: String!
+  authenticated: Boolean!
+  projects: [Project!]!
+}
+
+type Project {
+  id: ID!
+  name: String!
+  description: String!
+  owner: User!
+}
+
+input NewProject {
+  name: String!
+  description: String!
+  ownerEmail: String!
+}
+
+input NewUser {
+  username: String!
+  email: String!
+  password: String!
+}
+
+type Query {
+  projects: [Project!]!
+  users: [User!]!
+}
+
+type Mutation {
+  createProject(input: NewProject!): Project!
+  createUser(input: NewUser!): User!
+}
