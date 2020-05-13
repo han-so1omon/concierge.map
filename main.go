@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"github.com/gorilla/handlers"
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
@@ -49,8 +50,27 @@ func main() {
 	router := httprouter.New()
 	server.AddApproutes(router)
 
+	headersOk := handlers.AllowedHeaders([]string{
+		"Accept",
+		"Content-Type",
+		"Origin",
+		"X-Requested-With",
+		"Set-Cookie",
+	})
+	originsOk := handlers.AllowedOrigins([]string{
+		"http://192.168.1.23:8080",
+		"http://192.168.1.37:8080",
+		"http://errcsool.com",
+		"https://errcsool.com",
+	})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	credentialsOk := handlers.AllowCredentials()
+
 	util.Logger.Infof("Connect to http://0.0.0.0:%s/ for GraphQL playground", port)
-	util.Logger.Fatal(http.ListenAndServe("0.0.0.0:"+port, router))
+	util.Logger.Fatal(http.ListenAndServe(
+		"0.0.0.0:"+port,
+		handlers.CORS(originsOk, headersOk, methodsOk, credentialsOk)(router)),
+	)
 }
 
 /*
