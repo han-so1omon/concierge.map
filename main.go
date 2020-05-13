@@ -1,23 +1,17 @@
 package main
 
 import (
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
-
-	"github.com/han-so1omon/concierge.map/auth"
-	"github.com/han-so1omon/concierge.map/data/db"
-	//"github.com/han-so1omon/concierge.map/server"
-	"github.com/han-so1omon/concierge.map/server/graph"
-	"github.com/han-so1omon/concierge.map/server/graph/generated"
-	"github.com/han-so1omon/concierge.map/util"
-
 	"encoding/gob"
-	//"github.com/gorilla/handlers"
-	//"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
+
+	"github.com/han-so1omon/concierge.map/auth"
+	"github.com/han-so1omon/concierge.map/data/db"
+	"github.com/han-so1omon/concierge.map/server"
+	"github.com/han-so1omon/concierge.map/util"
 )
 
 const defaultPort = "8000"
@@ -52,18 +46,11 @@ func main() {
 		port = defaultPort
 	}
 
-	c := generated.Config{Resolvers: &graph.Resolver{
-		UserCollection:    db.Client.Database("concierge").Collection("users"),
-		ProjectCollection: db.Client.Database("concierge").Collection("projects"),
-	}}
-
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(c))
-
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	router := httprouter.New()
+	server.AddApproutes(router)
 
 	util.Logger.Infof("Connect to http://0.0.0.0:%s/ for GraphQL playground", port)
-	util.Logger.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
+	util.Logger.Fatal(http.ListenAndServe("0.0.0.0:"+port, router))
 }
 
 /*
