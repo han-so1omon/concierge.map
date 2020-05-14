@@ -15,6 +15,7 @@ require (
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/joho/godotenv v1.3.0
 	github.com/julienschmidt/httprouter v1.3.0
+	github.com/justinas/alice v1.2.0
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.0.1

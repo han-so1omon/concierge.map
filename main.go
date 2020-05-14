@@ -52,10 +52,19 @@ func main() {
 
 	headersOk := handlers.AllowedHeaders([]string{
 		"Accept",
+		"Accept-Encoding",
+		"Accept-Language",
+		"Cache-Control",
+		"Connection",
+		"Content-Length",
 		"Content-Type",
+		"Host",
 		"Origin",
-		"X-Requested-With",
+		"Pragma",
+		"Referer",
 		"Set-Cookie",
+		"User-Agent",
+		"X-Requested-With",
 	})
 	originsOk := handlers.AllowedOrigins([]string{
 		"http://192.168.1.23:8080",
@@ -72,70 +81,3 @@ func main() {
 		handlers.CORS(originsOk, headersOk, methodsOk, credentialsOk)(router)),
 	)
 }
-
-/*
-package main
-
-import (
-	"encoding/gob"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
-	"go.uber.org/zap"
-	"net/http"
-	"os"
-)
-
-func main() {
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-	util.Logger = logger.Sugar()
-	err := godotenv.Load()
-	if err != nil {
-		util.Logger.Fatal("Error loading .env file")
-	}
-
-	var sessionKeys Keys
-	sessionKeysFile := os.Getenv("SESSION_KEYS_FILE")
-	f, fileErr := os.OpenFile(sessionKeysFile, os.O_RDONLY, 0664)
-	defer f.Close()
-	if fileErr != nil {
-		util.Logger.Fatal("Error opening session keys file")
-	}
-	dec := gob.NewDecoder(f)
-	if fileErr = dec.Decode(&sessionKeys); fileErr != nil {
-		util.Logger.Fatal("Error loading session keys")
-	}
-
-	initSession(&sessionKeys)
-
-	util.Logger.Info("Server will start at http://0.0.0.0:8000/")
-
-	ConnectDatabase()
-
-	route := mux.NewRouter()
-
-	AddApproutes(route)
-
-	headersOk := handlers.AllowedHeaders([]string{
-		"Accept",
-		"Content-Type",
-		"Origin",
-		"X-Requested-With",
-		"Set-Cookie",
-	})
-	originsOk := handlers.AllowedOrigins([]string{
-		"http://192.168.1.23:8080",
-		"http://192.168.1.37:8080",
-		"http://errcsool.com",
-		"https://errcsool.com",
-	})
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-	credentialsOk := handlers.AllowCredentials()
-
-	util.Logger.Fatal(http.ListenAndServe(
-		"0.0.0.0:8000",
-		handlers.CORS(originsOk, headersOk, methodsOk, credentialsOk)(route)),
-	)
-}
-*/

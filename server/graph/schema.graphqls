@@ -34,4 +34,5 @@ type Query {
 type Mutation {
   createProject(input: NewProject!): Project!
   createUser(input: NewUser!): User!
+  signinInfo(input: SigninInfo!): User!
 }

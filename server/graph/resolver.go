@@ -6,13 +6,15 @@ package graph
 import (
 	"context"
 	"errors"
-	"github.com/han-so1omon/concierge.map/data/model"
-	"github.com/han-so1omon/concierge.map/server/graph/generated"
-	"github.com/han-so1omon/concierge.map/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/han-so1omon/concierge.map/auth"
+	"github.com/han-so1omon/concierge.map/data/model"
+	"github.com/han-so1omon/concierge.map/server/graph/generated"
+	"github.com/han-so1omon/concierge.map/util"
 )
 
 func (q *queryResolver) Projects(ctx context.Context) ([]*model.Project, error) {
@@ -66,8 +68,10 @@ func (q *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	for _, result := range results {
 		//TODO figure out how to properly unmarshal primitive.A
 		var projectIds []string
-		for _, projId := range result["projectIds"].(primitive.A) {
-			projectIds = append(projectIds, projId.(primitive.M)["_id"].(string))
+		if projIds, ok := result["projectIds"]; ok {
+			for _, projId := range projIds.(primitive.A) {
+				projectIds = append(projectIds, projId.(primitive.M)["_id"].(string))
+			}
 		}
 		user := model.User{
 			ID:            result["_id"].(primitive.ObjectID).String(),
@@ -147,6 +151,7 @@ func (m *mutationResolver) CreateProject(ctx context.Context, input model.NewPro
 		return nil, errors.New("internal error")
 	}
 
+	util.Logger.Infof("Project created with { name : %s, description : %s", input.Name, input.Description)
 	return &project, nil
 }
 
@@ -161,17 +166,17 @@ func (m *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 	}).Decode(&existingUser)
 
 	if mongoErr != nil && mongoErr != mongo.ErrNoDocuments {
-		util.Logger.Info(mongoErr)
 		return nil, errors.New("internal error")
 	}
 	if existingUser["email"] == input.Email {
 		return nil, errors.New("user with email already exists")
 	}
 
+	hashedPassword, _ := auth.HashPassword(input.Password)
 	res, err := m.UserCollection.InsertOne(ctx, bson.M{
 		"username":      input.Username,
 		"email":         input.Email,
-		"password":      input.Password,
+		"password":      hashedPassword,
 		"authenticated": false,
 		"projectIds":    []string{},
 	})
@@ -189,6 +194,7 @@ func (m *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 		return nil, errors.New("internal error")
 	}
 
+	util.Logger.Infof("User created with { username : %s, email : %s", input.Username, input.Email)
 	return &newUser, nil
 }
 

@@ -1,0 +1,2 @@
+Cleanup http routing stuff
+    - export returnErrorResponse from util pkg
